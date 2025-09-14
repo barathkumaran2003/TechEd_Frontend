@@ -1,0 +1,59 @@
+name: greens_technologies
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you want to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Default Flutter icons package
+  cupertino_icons: ^1.0.8
+
+  # ✅ File & Image utilities
+  file_picker: ^6.1.1
+  path: ^1.8.3
+  image_picker: ^1.0.4
+
+  # ✅ HTTP requests
+  http: ^1.2.2
+
+  # ✅ YouTube Player
+  youtube_player_flutter: ^8.1.0
+
+  # ✅ PDF & Excel Export
+  intl: ^0.19.0
+  pdf: ^3.11.0
+  path_provider: ^2.1.5
+  syncfusion_flutter_xlsio: ^26.1.35
+
+  # ✅ To open PDF/Excel files directly after saving
+  open_filex: ^4.4.0
+
+  # ✅ For Login UI (icons)
+  font_awesome_flutter: ^10.4.0
+
+  # ✅ For persisting login state (login/logout)
+  shared_preferences: ^2.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+
+  # ✅ Add your assets here (optional)
+  # assets:
+  #   - assets/images/
+  #
+  # ✅ Example if you want custom fonts
+  # fonts:
+  #   - family: CustomFont
+  #     fonts:
+  #       - asset: assets/fonts/CustomFont-Regular.ttf
