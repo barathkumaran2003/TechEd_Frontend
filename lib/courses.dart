@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ----------------------------
 // Model Class for Course
@@ -56,13 +57,24 @@ class Courses extends StatefulWidget {
 
 class _CoursesState extends State<Courses> {
   late Future<List<Course>> _coursesFuture;
+  static const String apiUrl =
+      "https://teched-backend-liqn.onrender.com/api/course";
 
-  static const String apiUrl = "https://teched-backend-liqn.onrender.com/api/course";
+  String? _userRole;
 
   @override
   void initState() {
     super.initState();
     _coursesFuture = fetchCourses();
+    _loadUserRole();
+  }
+
+  Future<void> _loadUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      // ✅ Load the saved role from login API
+      _userRole = prefs.getString('role') ?? "";
+    });
   }
 
   Future<List<Course>> fetchCourses() async {
@@ -119,8 +131,7 @@ class _CoursesState extends State<Courses> {
                   ),
                   TextFormField(
                     controller: descCtrl,
-                    decoration:
-                        const InputDecoration(labelText: "Description"),
+                    decoration: const InputDecoration(labelText: "Description"),
                   ),
                   TextFormField(
                     controller: techCtrl,
@@ -318,11 +329,15 @@ class _CoursesState extends State<Courses> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openAddCourseDialog,
-        backgroundColor: Colors.green,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      floatingActionButton: (_userRole != null &&
+              (_userRole!.toLowerCase() == "admin" ||
+                  _userRole!.toLowerCase() == "head"))
+          ? FloatingActionButton(
+              onPressed: _openAddCourseDialog,
+              backgroundColor: Colors.green,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null, // ✅ Only visible for Admin & Head
     );
   }
 }

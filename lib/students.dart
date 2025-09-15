@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'student_detail.dart'; // Make sure this file exists in your project
 
 const String BASE_URL = "https://teched-backend-liqn.onrender.com";
@@ -17,11 +18,20 @@ class _StudentsPageState extends State<StudentsPage> {
   List<dynamic> filteredStudents = [];
   TextEditingController searchController = TextEditingController();
   bool isLoading = true;
+  String userRole = "";
 
   @override
   void initState() {
     super.initState();
+    loadUserRole();
     fetchStudents();
+  }
+
+  Future<void> loadUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userRole = prefs.getString("role") ?? "";
+    });
   }
 
   Future<void> fetchStudents() async {
@@ -33,7 +43,6 @@ class _StudentsPageState extends State<StudentsPage> {
 
         List<dynamic> data;
 
-        // Handle both [] and { "students": [...] }
         if (decoded is List) {
           data = decoded;
         } else if (decoded is Map && decoded.containsKey("students")) {
@@ -158,33 +167,40 @@ class _StudentsPageState extends State<StudentsPage> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceEvenly,
                                   children: [
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue,
-                                      ),
-                                      child: const Text("View Profile"),
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => StudentDetail(
-                                              studentId:
-                                                  student['studentId'].toString(),
+                                    // ✅ Show View Profile for Admin, Trainer, Head
+                                    if (userRole == "admin" ||
+                                        userRole == "trainer" ||
+                                        userRole == "head")
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blue,
+                                        ),
+                                        child: const Text("View Profile"),
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => StudentDetail(
+                                                studentId: student['studentId']
+                                                    .toString(),
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
+                                          );
+                                        },
                                       ),
-                                      child: const Text("Delete"),
-                                      onPressed: () {
-                                        deleteStudent(
-                                            student['studentId'].toString());
-                                      },
-                                    ),
+                                    // ✅ Show Delete for Admin + Head only
+                                    if (userRole == "admin" ||
+                                        userRole == "head")
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red,
+                                        ),
+                                        child: const Text("Delete"),
+                                        onPressed: () {
+                                          deleteStudent(
+                                              student['studentId'].toString());
+                                        },
+                                      ),
                                   ],
                                 ),
                               ),

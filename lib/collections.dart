@@ -16,7 +16,6 @@ const String BASE_URL = 'https://teched-backend-liqn.onrender.com/api';
 
 class CollectionsPage extends StatefulWidget {
   const CollectionsPage({super.key});
-
   @override
   State<CollectionsPage> createState() => _CollectionsPageState();
 }
@@ -24,7 +23,6 @@ class CollectionsPage extends StatefulWidget {
 class _CollectionsPageState extends State<CollectionsPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
   final _formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -35,15 +33,12 @@ class _CollectionsPageState extends State<CollectionsPage>
   final TextEditingController feesController = TextEditingController();
   final TextEditingController couponController = TextEditingController();
   final TextEditingController paymentDateController = TextEditingController();
-
   File? selectedImageFile;
   Uint8List? selectedImageBytes;
-
   List<String> courses = [];
   List<String> trainers = [];
   List<Map<String, dynamic>> students = [];
   List<Map<String, dynamic>> filteredStudents = [];
-
   String reportFilter = 'month';
   DateTime? customStart;
   DateTime? customEnd;
@@ -155,20 +150,30 @@ class _CollectionsPageState extends State<CollectionsPage>
     if (!_formKey.currentState!.validate()) return;
     final imageUrl = await uploadImage();
 
+    // Parsing fees
+    final fees = int.tryParse(feesController.text.trim()) ?? 0;
+
+    // Ensuring paymentDate in 'YYYY-MM-DD'
+    String paymentDate = paymentDateController.text.trim();
+    try {
+      final parsedDate = DateTime.parse(paymentDate);
+      paymentDate = DateFormat('yyyy-MM-dd').format(parsedDate);
+    } catch (_) {}
+
     final payload = {
-      "name": nameController.text,
-      "course": courseController.text,
-      "combo": comboController.text,
-      "trainer": trainerController.text,
-      "fees": feesController.text,
-      "couponOrReferral": couponController.text,
-      "paymentDate": paymentDateController.text,
-      "contact": contactController.text,
-      "email": emailController.text,
+      "name": nameController.text.trim(),
+      "course": courseController.text.trim(),
+      "combo": comboController.text.trim(),
+      "trainer": trainerController.text.trim(),
+      "fees": fees,
+      "couponOrReferral": couponController.text.trim(),
+      "paymentDate": paymentDate,
+      "contact": contactController.text.trim(),
+      "email": emailController.text.trim(),
       "profilePicUrl": imageUrl,
       "paymentMode": "Cash",
     };
-
+    debugPrint(jsonEncode(payload));
     try {
       final res = await http.post(
         Uri.parse('$BASE_URL/student'),
@@ -178,16 +183,15 @@ class _CollectionsPageState extends State<CollectionsPage>
         },
         body: jsonEncode(payload),
       );
-
       if (res.statusCode == 200 || res.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Student registered successfully')));
         resetForm();
-        fetchStudents(); // refresh list
+        fetchStudents();
       } else {
         debugPrint("Failed Response: ${res.statusCode} ${res.body}");
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed: ${res.statusCode}')));
+            SnackBar(content: Text('Failed: ${res.statusCode}\n${res.body}')));
       }
     } catch (e) {
       debugPrint("Error: $e");
@@ -216,7 +220,6 @@ class _CollectionsPageState extends State<CollectionsPage>
   void filterStudents() {
     DateTime now = DateTime.now();
     List<Map<String, dynamic>> filtered = [];
-
     switch (reportFilter) {
       case 'week':
         final start = now.subtract(Duration(days: now.weekday - 1));
@@ -253,7 +256,6 @@ class _CollectionsPageState extends State<CollectionsPage>
       default:
         filtered = students;
     }
-
     setState(() => filteredStudents = filtered);
   }
 
@@ -280,7 +282,7 @@ class _CollectionsPageState extends State<CollectionsPage>
                 s['name'] ?? '',
                 s['course'] ?? '',
                 s['trainer'] ?? '',
-                s['fees'] ?? '',
+                s['fees']?.toString() ?? '',
                 s['email'] ?? '',
                 s['contact'] ?? '',
                 s['paymentDate'] ?? ''
@@ -310,21 +312,18 @@ class _CollectionsPageState extends State<CollectionsPage>
     sheet.getRangeByIndex(1, 5).setText('Email');
     sheet.getRangeByIndex(1, 6).setText('Contact');
     sheet.getRangeByIndex(1, 7).setText('Payment Date');
-
     for (var i = 0; i < filteredStudents.length; i++) {
       final s = filteredStudents[i];
       sheet.getRangeByIndex(i + 2, 1).setText(s['name'] ?? '');
       sheet.getRangeByIndex(i + 2, 2).setText(s['course'] ?? '');
       sheet.getRangeByIndex(i + 2, 3).setText(s['trainer'] ?? '');
-      sheet.getRangeByIndex(i + 2, 4).setText(s['fees'] ?? '');
+      sheet.getRangeByIndex(i + 2, 4).setText(s['fees']?.toString() ?? '');
       sheet.getRangeByIndex(i + 2, 5).setText(s['email'] ?? '');
       sheet.getRangeByIndex(i + 2, 6).setText(s['contact'] ?? '');
       sheet.getRangeByIndex(i + 2, 7).setText(s['paymentDate'] ?? '');
     }
-
     final bytes = workbook.saveAsStream();
     workbook.dispose();
-
     final dir = await getApplicationDocumentsDirectory();
     final file = File('${dir.path}/collections_report.xlsx');
     await file.writeAsBytes(bytes);
@@ -520,7 +519,7 @@ class _CollectionsPageState extends State<CollectionsPage>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text("Trainer: ${s['trainer'] ?? ''}"),
-                            Text("Fees: ${s['fees'] ?? ''}"),
+                            Text("Fees: ${s['fees']?.toString() ?? ''}"),
                             Text("Email: ${s['email'] ?? ''}"),
                             Text("Contact: ${s['contact'] ?? ''}"),
                             Text("Date: ${s['paymentDate'] ?? ''}"),

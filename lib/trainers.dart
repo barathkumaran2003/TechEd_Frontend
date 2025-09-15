@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 const String BASE_URL = "https://teched-backend-liqn.onrender.com"; // Replace with your API base URL
 
@@ -16,6 +17,7 @@ class _TrainersState extends State<Trainers> {
   bool showForm = false;
   bool loading = false;
   String search = "";
+  String userRole = ""; // ✅ store logged in user role
 
   final _formKey = GlobalKey<FormState>();
   Map<String, dynamic> formData = {
@@ -36,6 +38,14 @@ class _TrainersState extends State<Trainers> {
   void initState() {
     super.initState();
     fetchTrainers();
+    _loadUserRole(); // ✅ load role
+  }
+
+  Future<void> _loadUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userRole = prefs.getString("userRole") ?? "User"; // default fallback
+    });
   }
 
   Future<void> fetchTrainers() async {
@@ -150,10 +160,12 @@ class _TrainersState extends State<Trainers> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => setState(() => showForm = !showForm),
-                  child: Text(showForm ? "Close Form" : "Add Trainer"),
-                ),
+                // ✅ Only Admin & Head can see Add Trainer button
+                if (userRole == "Admin" || userRole == "Head")
+                  ElevatedButton(
+                    onPressed: () => setState(() => showForm = !showForm),
+                    child: Text(showForm ? "Close Form" : "Add Trainer"),
+                  ),
               ],
             ),
             const SizedBox(height: 16),

@@ -1,14 +1,26 @@
 import 'package:flutter/material.dart';
-import 'courses.dart'; // Confirm correct relative path to your Courses.dart file
-import 'trainers.dart'; // Confirm correct relative path
-import 'students.dart'; // Confirm correct relative path
-import 'mapping.dart'; // Confirm correct relative path
-import 'attendance.dart'; // Confirm correct relative path
-import 'collections.dart'; // Confirm correct relative path
-import 'reports.dart'; // Confirm correct relative path
-import 'settings.dart'; // Confirm correct relative path
+import 'package:shared_preferences/shared_preferences.dart';
+import 'courses.dart'; 
+import 'trainers.dart'; 
+import 'students.dart'; 
+import 'mapping.dart'; 
+import 'attendance.dart'; 
+import 'collections.dart'; 
+import 'reports.dart'; 
+import 'settings.dart'; 
+import 'login_page.dart'; // import login page for logout navigation
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String userEmail = "";
+  String userRole = "";
+
   final List<Map<String, dynamic>> stats = [
     {
       "title": "Courses",
@@ -44,7 +56,32 @@ class HomeScreen extends StatelessWidget {
     {"title": "Angular Essentials", "trainer": "Sarah Davis", "time": "6:00 PM"},
   ];
 
-   HomeScreen({super.key});
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      // ✅ Fix: Use correct keys that were saved in login_page.dart
+      userEmail = prefs.getString("email") ?? "user@example.com";
+      userRole = prefs.getString("role") ?? "User";
+    });
+  }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (route) => false,
+      );
+    }
+  }
 
   static Widget sidebarItem(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
@@ -93,11 +130,10 @@ class HomeScreen extends StatelessWidget {
                   Navigator.of(context)
                       .push(MaterialPageRoute(builder: (_) => const Trainers()));
                 }),
-               sidebarItem(Icons.people, 'Students', () {
-  Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => const StudentsPage()));
-}),
-
+                sidebarItem(Icons.people, 'Students', () {
+                  Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (_) => const StudentsPage()));
+                }),
                 sidebarItem(Icons.link, 'Mapping', () {
                   Navigator.of(context)
                       .push(MaterialPageRoute(builder: (_) => const Mapping()));
@@ -107,8 +143,8 @@ class HomeScreen extends StatelessWidget {
                       .push(MaterialPageRoute(builder: (_) => const Attendance()));
                 }),
                 sidebarItem(Icons.payment, 'Collections', () {
-                  Navigator.of(context)
-                      .push(MaterialPageRoute(builder: (_) => const CollectionsPage()));
+                  Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const CollectionsPage()));
                 }),
                 sidebarItem(Icons.bar_chart, 'Reports', () {
                   Navigator.of(context)
@@ -118,7 +154,6 @@ class HomeScreen extends StatelessWidget {
                   Navigator.of(context)
                       .push(MaterialPageRoute(builder: (_) => const Settings()));
                 }),
-                
                 Padding(
                   padding: const EdgeInsets.all(10.0),
                   child: Column(
@@ -160,22 +195,56 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Builder(
-                builder: (context) => IconButton(
-                  icon: const Icon(Icons.menu, color: Colors.white),
-                  onPressed: () {
-                    Scaffold.of(context).openDrawer();
-                  },
-                ),
+              Row(
+                children: [
+                  Builder(
+                    builder: (context) => IconButton(
+                      icon: const Icon(Icons.menu, color: Colors.white),
+                      onPressed: () {
+                        Scaffold.of(context).openDrawer();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    "TechEd Dashboard",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              const Text(
-                "TechEd Dashboard",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              // ✅ User email with dropdown
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == "logout") {
+                    _logout();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: "role",
+                    enabled: false,
+                    child: Text("Role: $userRole"),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: "logout",
+                    child: Text("Logout"),
+                  ),
+                ],
+                child: Row(
+                  children: [
+                    Text(
+                      userEmail,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    const Icon(Icons.arrow_drop_down, color: Colors.white),
+                  ],
                 ),
               ),
             ],

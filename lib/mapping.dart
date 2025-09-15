@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Replace with your actual base URL
 const String BASE_URL = "https://teched-backend-liqn.onrender.com";
@@ -30,10 +31,12 @@ class _TrainerStudentMappingPageState extends State<Mapping> {
   String debouncedFilter = "";
 
   int? editingIndex;
+  String userRole = "";
 
   @override
   void initState() {
     super.initState();
+    loadUserRole();
     fetchCourses();
     fetchTrainers();
     fetchStudents();
@@ -43,6 +46,13 @@ class _TrainerStudentMappingPageState extends State<Mapping> {
       setState(() {
         debouncedFilter = filterController.text.trim().toLowerCase();
       });
+    });
+  }
+
+  Future<void> loadUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userRole = prefs.getString("role") ?? "";
     });
   }
 
@@ -248,84 +258,85 @@ class _TrainerStudentMappingPageState extends State<Mapping> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Student input
-              TextField(
-                controller: studentController,
-                decoration: const InputDecoration(
-                  labelText: "Students (comma separated)",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Course
-              DropdownButtonFormField<String>(
-                value: selectedCourse.isEmpty ? null : selectedCourse,
-                items: courses
-                    .map((c) => DropdownMenuItem<String>(
-                        value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (val) {
-                  setState(() {
-                    selectedCourse = val ?? "";
-                  });
-                },
-                decoration: const InputDecoration(
-                  labelText: "Course",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Trainer
-              DropdownButtonFormField<String>(
-                value: selectedTrainer.isEmpty ? null : selectedTrainer,
-                items: trainers
-                    .map((t) => DropdownMenuItem<String>(
-                          value: t["fullName"].toString(),
-                          child: Text(
-                              "${t["fullName"]} (ID: ${t["trainerId"]})"),
-                        ))
-                    .toList(),
-                onChanged: (val) {
-                  setState(() {
-                    selectedTrainer = val ?? "";
-                    final trainer = trainers.firstWhere(
-                        (t) => t["fullName"].toString() == val,
-                        orElse: () => {});
-                    selectedTrainerId = trainer["trainerId"];
-                  });
-                },
-                decoration: const InputDecoration(
-                  labelText: "Trainer",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Buttons
-              Row(
-                children: [
-                  ElevatedButton(
-                    onPressed: assignTrainer,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          editingIndex != null ? Colors.green : Colors.blue,
-                    ),
-                    child: Text(editingIndex != null
-                        ? "Save Changes"
-                        : "Assign Trainer"),
+              // ✅ Show Assign Trainer Form only for admin, head, trainer
+              if (userRole == "admin" ||
+                  userRole == "head" ||
+                  userRole == "trainer") ...[
+                TextField(
+                  controller: studentController,
+                  decoration: const InputDecoration(
+                    labelText: "Students (comma separated)",
+                    border: OutlineInputBorder(),
                   ),
-                  if (editingIndex != null) const SizedBox(width: 8),
-                  if (editingIndex != null)
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedCourse.isEmpty ? null : selectedCourse,
+                  items: courses
+                      .map((c) => DropdownMenuItem<String>(
+                          value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      selectedCourse = val ?? "";
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    labelText: "Course",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedTrainer.isEmpty ? null : selectedTrainer,
+                  items: trainers
+                      .map((t) => DropdownMenuItem<String>(
+                            value: t["fullName"].toString(),
+                            child: Text(
+                                "${t["fullName"]} (ID: ${t["trainerId"]})"),
+                          ))
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      selectedTrainer = val ?? "";
+                      final trainer = trainers.firstWhere(
+                          (t) => t["fullName"].toString() == val,
+                          orElse: () => {});
+                      selectedTrainerId = trainer["trainerId"];
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    labelText: "Trainer",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
                     ElevatedButton(
-                      onPressed: resetForm,
+                      onPressed: assignTrainer,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
+                        backgroundColor:
+                            editingIndex != null ? Colors.green : Colors.blue,
                       ),
-                      child: const Text("Cancel"),
+                      child: Text(editingIndex != null
+                          ? "Save Changes"
+                          : "Assign Trainer"),
                     ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Filter
+                    if (editingIndex != null) const SizedBox(width: 8),
+                    if (editingIndex != null)
+                      ElevatedButton(
+                        onPressed: resetForm,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        child: const Text("Cancel"),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+              ],
+
               TextField(
                 controller: filterController,
                 decoration: const InputDecoration(
@@ -334,7 +345,6 @@ class _TrainerStudentMappingPageState extends State<Mapping> {
                 ),
               ),
               const SizedBox(height: 20),
-              // Mappings table
               DataTable(
                 columns: const [
                   DataColumn(label: Text("Course")),
