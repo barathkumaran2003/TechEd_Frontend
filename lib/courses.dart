@@ -45,9 +45,6 @@ class Course {
   }
 }
 
-// ----------------------------
-// Courses Screen
-// ----------------------------
 class Courses extends StatefulWidget {
   const Courses({Key? key}) : super(key: key);
 
@@ -72,7 +69,6 @@ class _CoursesState extends State<Courses> {
   Future<void> _loadUserRole() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      // ✅ Load the saved role from login API
       _userRole = prefs.getString('role') ?? "";
     });
   }
@@ -197,6 +193,17 @@ class _CoursesState extends State<Courses> {
     );
   }
 
+  final List<List<Color>> cardGradients = [
+    [Color(0xFFD2F6C5), Color(0xFF7BD5C1)],
+    [Color(0xFFF8E2CF), Color(0xFFE3B04B)],
+    [Color(0xFFB4B8F8), Color(0xFFE3A1F7)],
+    [Color(0xFFFFBCA7), Color(0xFFE17A7A)],
+    [Color(0xFFCCE2FF), Color(0xFFAECFFF)],
+    [Color(0xFFFFE597), Color(0xFFE58080)],
+    [Color(0xFFFFF3B0), Color(0xFFCAFFD0)],
+    [Color(0xFFFDD2FA), Color(0xFFFDEFC2)],
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -206,138 +213,200 @@ class _CoursesState extends State<Courses> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.green, Colors.yellowAccent],
+              colors: [Color(0xFF27AE60), Color(0xFFFCF6BA)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
           ),
         ),
         title: const Text(
-          "Courses",
+          "Ready to reimagine your career?",
           style: TextStyle(
               color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
         ),
+        centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: FutureBuilder<List<Course>>(
-        future: _coursesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error loading courses\n${snapshot.error}',
-                style: const TextStyle(color: Colors.red),
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
-          final courses = snapshot.data ?? [];
-          if (courses.isEmpty) {
-            return const Center(
-              child: Text(
-                "No courses available.",
-                style: TextStyle(fontSize: 18),
-              ),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-            itemCount: courses.length,
-            separatorBuilder: (_, __) => const Divider(),
-            itemBuilder: (context, i) {
-              final course = courses[i];
-              return Card(
-                elevation: 3,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                child: ExpansionTile(
-                  leading: const Icon(Icons.book_rounded,
-                      color: Colors.green, size: 32),
-                  title: Text(
-                    course.name,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 18),
+      body: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            child: const Text(
+              "Join Career Accelerators and get the structure, skills, and real-world experience to become an exceptional candidate.",
+              style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w500),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<List<Course>>(
+              future: _coursesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error loading courses\n${snapshot.error}',
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
+                final courses = snapshot.data ?? [];
+                if (courses.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "No courses available.",
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  );
+                }
+                return GridView.builder(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 20,
+                    crossAxisSpacing: 20,
+                    childAspectRatio: 0.92,
                   ),
-                  subtitle: (course.description != null &&
-                          course.description!.trim().isNotEmpty)
-                      ? Text(course.description!)
-                      : null,
-                  children: [
-                    if (course.duration != null)
-                      ListTile(
-                        leading: const Icon(Icons.timer, color: Colors.blue),
-                        title: Text("Duration: ${course.duration}"),
+                  itemCount: courses.length,
+                  itemBuilder: (context, i) {
+                    final course = courses[i];
+                    final gradientColors =
+                        cardGradients[i % cardGradients.length];
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: gradientColors,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 8,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
                       ),
-                    if (course.mode != null)
-                      ListTile(
-                        leading: const Icon(Icons.computer, color: Colors.purple),
-                        title: Text("Mode: ${course.mode}"),
-                      ),
-                    if (course.fees != null)
-                      ListTile(
-                        leading: const Icon(Icons.currency_rupee,
-                            color: Colors.orange),
-                        title: Text("Fees: ₹${course.fees!.toStringAsFixed(0)}"),
-                      ),
-                    if (course.technologies != null &&
-                        course.technologies!.isNotEmpty)
-                      ListTile(
-                        leading:
-                            const Icon(Icons.build_circle, color: Colors.teal),
-                        title: Text(
-                            "Technologies: ${course.technologies!.join(", ")}"),
-                      ),
-                    if (course.demoVideo != null &&
-                        course.demoVideo!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Demo Video:",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16)),
-                            const SizedBox(height: 8),
-                            AspectRatio(
-                              aspectRatio: 16 / 9,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  color: Colors.black12,
-                                  child: Center(
-                                    child: Text(
-                                      "Video Player Placeholder\n${course.demoVideo}",
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                          fontSize: 12, color: Colors.grey),
-                                    ),
-                                  ),
+                      child: Card(
+                        color: Colors.transparent,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: Colors.white.withOpacity(0.88),
+                                radius: 30,
+                                child: Icon(
+                                  Icons.book_rounded,
+                                  size: 30,
+                                  color: Colors.green.shade700,
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 16),
+                              Text(
+                                course.name,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 17,
+                                    color: Colors.black87),
+                              ),
+                              if (course.description != null &&
+                                  course.description!.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 7.0),
+                                  child: Text(
+                                    course.description!,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        color: Colors.grey.shade800,
+                                        fontSize: 13),
+                                  ),
+                                ),
+                              const Spacer(),
+                              if (course.fees != null && course.fees != 0)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 4, horizontal: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(.06),
+                                    borderRadius: BorderRadius.circular(100),
+                                  ),
+                                  child: Text(
+                                    "Fees: ₹${course.fees!.toStringAsFixed(0)}",
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.black87),
+                                  ),
+                                ),
+                              if (course.duration != null &&
+                                  course.duration!.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 4, horizontal: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(.06),
+                                    borderRadius: BorderRadius.circular(100),
+                                  ),
+                                  child: Text(
+                                    "Duration: ${course.duration}",
+                                    style: const TextStyle(
+                                        fontSize: 12, color: Colors.black87),
+                                  ),
+                                ),
+                              // Add more pills here, example: mode, tech, video, etc.
+                              if (course.technologies != null &&
+                                  course.technologies!.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 3.0),
+                                  child: Text(
+                                    "Tech: ${course.technologies!.join(', ')}",
+                                    style: const TextStyle(
+                                        fontSize: 12, color: Colors.black54),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: (_userRole != null &&
               (_userRole!.toLowerCase() == "admin" ||
                   _userRole!.toLowerCase() == "head"))
           ? FloatingActionButton(
               onPressed: _openAddCourseDialog,
-              backgroundColor: Colors.green,
+              backgroundColor: const Color(0xFF27AE60),
               child: const Icon(Icons.add, color: Colors.white),
             )
-          : null, // ✅ Only visible for Admin & Head
+          : null,
     );
   }
 }

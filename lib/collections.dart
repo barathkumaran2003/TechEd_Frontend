@@ -42,6 +42,7 @@ class _CollectionsPageState extends State<CollectionsPage>
   String reportFilter = 'month';
   DateTime? customStart;
   DateTime? customEnd;
+  String paymentMode = "Cash";
 
   @override
   void initState() {
@@ -138,7 +139,16 @@ class _CollectionsPageState extends State<CollectionsPage>
       }
       final res = await request.send();
       if (res.statusCode == 200) {
-        return await res.stream.bytesToString();
+        final body = await res.stream.bytesToString();
+        try {
+          final jsonBody = jsonDecode(body);
+          if (jsonBody is Map && jsonBody.containsKey('url')) {
+            return jsonBody['url'] ?? '';
+          }
+          return body;
+        } catch (_) {
+          return body;
+        }
       }
     } catch (e) {
       debugPrint(e.toString());
@@ -150,30 +160,36 @@ class _CollectionsPageState extends State<CollectionsPage>
     if (!_formKey.currentState!.validate()) return;
     final imageUrl = await uploadImage();
 
-    // Parsing fees
-    final fees = int.tryParse(feesController.text.trim()) ?? 0;
+    final feeAmount = double.tryParse(feesController.text.trim()) ?? 0;
 
-    // Ensuring paymentDate in 'YYYY-MM-DD'
     String paymentDate = paymentDateController.text.trim();
     try {
       final parsedDate = DateTime.parse(paymentDate);
       paymentDate = DateFormat('yyyy-MM-dd').format(parsedDate);
     } catch (_) {}
 
+    // ✅ FIX: Match backend structure (fees as List<Fee>)
     final payload = {
       "name": nameController.text.trim(),
       "course": courseController.text.trim(),
       "combo": comboController.text.trim(),
       "trainer": trainerController.text.trim(),
-      "fees": fees,
+      "fees": [
+        {
+          "course": courseController.text.trim(),
+          "amount": feeAmount,
+          "status": "Paid"
+        }
+      ],
       "couponOrReferral": couponController.text.trim(),
       "paymentDate": paymentDate,
       "contact": contactController.text.trim(),
       "email": emailController.text.trim(),
       "profilePicUrl": imageUrl,
-      "paymentMode": "Cash",
+      "paymentMode": paymentMode,
     };
-    debugPrint(jsonEncode(payload));
+    debugPrint("➡️ Sending: ${jsonEncode(payload)}");
+
     try {
       final res = await http.post(
         Uri.parse('$BASE_URL/student'),
@@ -189,12 +205,12 @@ class _CollectionsPageState extends State<CollectionsPage>
         resetForm();
         fetchStudents();
       } else {
-        debugPrint("Failed Response: ${res.statusCode} ${res.body}");
+        debugPrint("❌ Failed Response: ${res.statusCode} ${res.body}");
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed: ${res.statusCode}\n${res.body}')));
       }
     } catch (e) {
-      debugPrint("Error: $e");
+      debugPrint("⚠️ Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error while registering student')));
     }
@@ -214,6 +230,7 @@ class _CollectionsPageState extends State<CollectionsPage>
     setState(() {
       selectedImageFile = null;
       selectedImageBytes = null;
+      paymentMode = "Cash";
     });
   }
 
@@ -248,8 +265,8 @@ class _CollectionsPageState extends State<CollectionsPage>
           filtered = students.where((s) {
             final date = DateTime.tryParse(s['paymentDate'] ?? '');
             return date != null &&
-                date.isAfter(customStart!) &&
-                date.isBefore(customEnd!);
+                !date.isBefore(customStart!) &&
+                !date.isAfter(customEnd!);
           }).toList();
         }
         break;
@@ -260,10 +277,16 @@ class _CollectionsPageState extends State<CollectionsPage>
   }
 
   Future<void> exportPdf() async {
-    if (filteredStudents.isEmpty) return;
+    if (filteredStudents.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No data to export')));
+      return;
+    }
     final pdf = pw.Document();
     pdf.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
       build: (_) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Text('Collections Report', style: pw.TextStyle(fontSize: 20)),
           pw.SizedBox(height: 20),
@@ -275,17 +298,22 @@ class _CollectionsPageState extends State<CollectionsPage>
               'Fees',
               'Email',
               'Contact',
-              'Payment Date'
+              'Payment Date',
+              'Payment Mode'
             ],
             data: filteredStudents.map((s) {
+              final fee = (s['fees'] != null && s['fees'] is List && s['fees'].isNotEmpty)
+                  ? s['fees'][0]['amount'].toString()
+                  : '';
               return [
                 s['name'] ?? '',
                 s['course'] ?? '',
                 s['trainer'] ?? '',
-                s['fees']?.toString() ?? '',
+                fee,
                 s['email'] ?? '',
                 s['contact'] ?? '',
-                s['paymentDate'] ?? ''
+                s['paymentDate'] ?? '',
+                s['paymentMode'] ?? ''
               ];
             }).toList(),
           ),
@@ -302,7 +330,11 @@ class _CollectionsPageState extends State<CollectionsPage>
   }
 
   Future<void> exportExcel() async {
-    if (filteredStudents.isEmpty) return;
+    if (filteredStudents.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No data to export')));
+      return;
+    }
     final workbook = xlsio.Workbook();
     final sheet = workbook.worksheets[0];
     sheet.getRangeByIndex(1, 1).setText('Name');
@@ -312,15 +344,20 @@ class _CollectionsPageState extends State<CollectionsPage>
     sheet.getRangeByIndex(1, 5).setText('Email');
     sheet.getRangeByIndex(1, 6).setText('Contact');
     sheet.getRangeByIndex(1, 7).setText('Payment Date');
+    sheet.getRangeByIndex(1, 8).setText('Payment Mode');
     for (var i = 0; i < filteredStudents.length; i++) {
       final s = filteredStudents[i];
+      final fee = (s['fees'] != null && s['fees'] is List && s['fees'].isNotEmpty)
+          ? s['fees'][0]['amount'].toString()
+          : '';
       sheet.getRangeByIndex(i + 2, 1).setText(s['name'] ?? '');
       sheet.getRangeByIndex(i + 2, 2).setText(s['course'] ?? '');
       sheet.getRangeByIndex(i + 2, 3).setText(s['trainer'] ?? '');
-      sheet.getRangeByIndex(i + 2, 4).setText(s['fees']?.toString() ?? '');
+      sheet.getRangeByIndex(i + 2, 4).setText(fee);
       sheet.getRangeByIndex(i + 2, 5).setText(s['email'] ?? '');
       sheet.getRangeByIndex(i + 2, 6).setText(s['contact'] ?? '');
       sheet.getRangeByIndex(i + 2, 7).setText(s['paymentDate'] ?? '');
+      sheet.getRangeByIndex(i + 2, 8).setText(s['paymentMode'] ?? '');
     }
     final bytes = workbook.saveAsStream();
     workbook.dispose();
@@ -396,6 +433,10 @@ class _CollectionsPageState extends State<CollectionsPage>
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Select course' : null,
                   ),
+                  TextFormField(
+                    controller: comboController,
+                    decoration: const InputDecoration(labelText: 'Combo'),
+                  ),
                   DropdownButtonFormField<String>(
                     value: trainerController.text.isEmpty
                         ? null
@@ -424,10 +465,23 @@ class _CollectionsPageState extends State<CollectionsPage>
                   ),
                   TextFormField(
                     controller: paymentDateController,
+                    readOnly: true,
                     decoration: const InputDecoration(
                         labelText: 'Payment Date (YYYY-MM-DD)'),
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Enter date' : null,
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (date != null) {
+                        paymentDateController.text =
+                            DateFormat('yyyy-MM-dd').format(date);
+                      }
+                    },
                   ),
                   TextFormField(
                     controller: contactController,
@@ -440,6 +494,20 @@ class _CollectionsPageState extends State<CollectionsPage>
                     decoration: const InputDecoration(labelText: 'Email'),
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Enter email' : null,
+                  ),
+                  DropdownButtonFormField<String>(
+                    value: paymentMode,
+                    items: const [
+                      DropdownMenuItem(value: "Cash", child: Text("Cash")),
+                      DropdownMenuItem(value: "Card", child: Text("Card")),
+                      DropdownMenuItem(value: "UPI", child: Text("UPI")),
+                      DropdownMenuItem(
+                          value: "Net Banking", child: Text("Net Banking")),
+                    ],
+                    onChanged: (v) =>
+                        setState(() => paymentMode = v ?? "Cash"),
+                    decoration:
+                        const InputDecoration(labelText: 'Payment Mode'),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -510,6 +578,11 @@ class _CollectionsPageState extends State<CollectionsPage>
                   itemCount: filteredStudents.length,
                   itemBuilder: (context, i) {
                     final s = filteredStudents[i];
+                    final fee = (s['fees'] != null &&
+                            s['fees'] is List &&
+                            s['fees'].isNotEmpty)
+                        ? s['fees'][0]['amount'].toString()
+                        : '';
                     return Card(
                       margin:
                           const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -519,10 +592,11 @@ class _CollectionsPageState extends State<CollectionsPage>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text("Trainer: ${s['trainer'] ?? ''}"),
-                            Text("Fees: ${s['fees']?.toString() ?? ''}"),
+                            Text("Fees: $fee"),
                             Text("Email: ${s['email'] ?? ''}"),
                             Text("Contact: ${s['contact'] ?? ''}"),
                             Text("Date: ${s['paymentDate'] ?? ''}"),
+                            Text("Payment Mode: ${s['paymentMode'] ?? ''}"),
                           ],
                         ),
                       ),

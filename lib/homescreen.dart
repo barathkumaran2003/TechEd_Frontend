@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'courses.dart'; 
-import 'trainers.dart'; 
-import 'students.dart'; 
-import 'mapping.dart'; 
-import 'attendance.dart'; 
-import 'collections.dart'; 
-import 'reports.dart'; 
-import 'settings.dart'; 
+import 'courses.dart';
+import 'trainers.dart';
+import 'students.dart';
+import 'mapping.dart';
+import 'attendance.dart';
+import 'collections.dart';
+import 'reports.dart';
+import 'settings.dart';
 import 'login_page.dart'; // import login page for logout navigation
 
 class HomeScreen extends StatefulWidget {
@@ -20,6 +20,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String userEmail = "";
   String userRole = "";
+
+  // Dropdown allowed values
+  final List<String> allowedRoles = ['Admin', 'Trainer', 'Student'];
 
   final List<Map<String, dynamic>> stats = [
     {
@@ -64,11 +67,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadUser() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      // ✅ Fix: Use correct keys that were saved in login_page.dart
-      userEmail = prefs.getString("email") ?? "user@example.com";
-      userRole = prefs.getString("role") ?? "User";
-    });
+    String email = prefs.getString("email") ?? "user@example.com";
+    String role = prefs.getString("role") ?? "User";
+
+    // ✅ Ensure role exists in allowedRoles, else default to first item
+    if (!allowedRoles.contains(role)) {
+      role = allowedRoles.first;
+    }
+
+    if (mounted) {
+      setState(() {
+        userEmail = email;
+        userRole = role;
+      });
+    }
   }
 
   Future<void> _logout() async {
@@ -131,16 +143,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       .push(MaterialPageRoute(builder: (_) => const Trainers()));
                 }),
                 sidebarItem(Icons.people, 'Students', () {
-                  Navigator.of(context)
-                      .push(MaterialPageRoute(builder: (_) => const StudentsPage()));
+                  Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const StudentsPage()));
                 }),
                 sidebarItem(Icons.link, 'Mapping', () {
                   Navigator.of(context)
                       .push(MaterialPageRoute(builder: (_) => const Mapping()));
                 }),
                 sidebarItem(Icons.check_box, 'Attendance', () {
-                  Navigator.of(context)
-                      .push(MaterialPageRoute(builder: (_) => const Attendance()));
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => AttendancePage(
+                        userId: userEmail,
+                        role: userRole,
+                      ),
+                    ),
+                  );
                 }),
                 sidebarItem(Icons.payment, 'Collections', () {
                   Navigator.of(context).push(
@@ -160,10 +178,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text("Role:", style: TextStyle(color: Colors.white)),
+                      // ✅ Corrected DropdownButton
                       DropdownButton<String>(
-                        value: 'Admin',
+                        value: allowedRoles.contains(userRole)
+                            ? userRole
+                            : allowedRoles.first,
                         dropdownColor: Colors.white,
-                        items: ['Admin', 'Trainer'].map((String value) {
+                        items: allowedRoles.map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),
@@ -218,7 +239,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              // ✅ User email with dropdown
               PopupMenuButton<String>(
                 onSelected: (value) {
                   if (value == "logout") {

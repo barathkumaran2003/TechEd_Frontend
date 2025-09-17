@@ -44,7 +44,7 @@ class _TrainersState extends State<Trainers> {
   Future<void> _loadUserRole() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      userRole = prefs.getString("userRole") ?? "User"; // default fallback
+      userRole = prefs.getString("role") ?? "user"; // ✅ match login page key
     });
   }
 
@@ -161,7 +161,7 @@ class _TrainersState extends State<Trainers> {
                 ),
                 const SizedBox(width: 8),
                 // ✅ Only Admin & Head can see Add Trainer button
-                if (userRole == "Admin" || userRole == "Head")
+                if (userRole.toLowerCase() == "admin" || userRole.toLowerCase() == "head")
                   ElevatedButton(
                     onPressed: () => setState(() => showForm = !showForm),
                     child: Text(showForm ? "Close Form" : "Add Trainer"),
